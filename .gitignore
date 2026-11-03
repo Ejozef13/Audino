@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+private/
+artifacts/
+*.sqlite*
+*.npz
+*.png
+.env

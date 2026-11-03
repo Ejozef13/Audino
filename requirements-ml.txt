@@ -1,0 +1,2 @@
+# Optional training/evaluation dependency; installed version verified in this environment.
+numpy==2.3.5

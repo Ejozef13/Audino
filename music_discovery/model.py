@@ -43,6 +43,10 @@ def fit(db, cutoff, output, factors=16, iterations=10, seed=42):
     meta = dict(users=users, items=items, artists=artists, cutoff=instant(cutoff),
                 seed=seed, factors=factors, iterations=iterations, alpha=10, regularization=.1,
                 training_seconds=time.perf_counter()-started, numpy=np.__version__)
+    titles = {}
+    for row in db.execute('SELECT source,track_id,title FROM events WHERE timestamp<? ORDER BY timestamp,event_id', (instant(cutoff),)):
+        titles[(row['source'],row['track_id'])] = row['title']
+    meta['titles'] = [titles[tuple(item)] for item in items]
     np.savez_compressed(output, x=x, y=y, counts=counts, metadata=json.dumps(meta))
     return meta
 
@@ -76,4 +80,5 @@ def rank(meta, x, y, counts, user, method='als', mode='discovery', k=10):
     eligible = ~seen if mode == 'discovery' else seen
     order = sorted(np.flatnonzero(eligible), key=lambda j:(-float(values[j]),meta['items'][j]))[:k]
     return [dict(source=meta['items'][j][0], track_id=meta['items'][j][1], artist=meta['artists'][j],
+                 title=meta.get('titles', [None]*len(meta['items']))[j],
                  score=float(values[j]), method=label, availability='unverified catalog suggestion') for j in order]

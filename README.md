@@ -5,6 +5,19 @@ Navidrome companion. **First runnable slice, not a finished release.** Current
 integration format is internal JSON only. Spotify, ListenBrainz, and Navidrome
 adapters await primary-documentation verification and access.
 
+The dashboard now defaults to the current year through the time of each request,
+with top-five artists/tracks and reported-duration coverage. New trained artifacts
+support labeled YouTube search links. Obsidian-compatible year summaries can be
+exported without running Obsidian on the server:
+
+```sh
+python -m music_discovery export-year --listener demo --timezone America/New_York --output-directory private/notes-demo --demo
+```
+
+See [Debian deployment and desktop Obsidian handoff](docs/debian.md) for startup
+templates, sync boundaries, and the remaining Navidrome version/collection checks.
+These changes do not yet connect to a running Navidrome instance or collect plays.
+
 Python 3.12+. Analytics, web UI, SQLite, and SVG exports use the standard library.
 Training/evaluation additionally require `pip install -r requirements-ml.txt`.
 The cloud instance already has NumPy 2.3.5; this is not Enrique's desktop or NAS.

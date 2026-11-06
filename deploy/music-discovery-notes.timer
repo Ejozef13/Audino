@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Music Discovery notes every five minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=music-discovery-notes.service
+
+[Install]
+WantedBy=timers.target

@@ -11,6 +11,12 @@ def main():
     parser.add_argument('--db', default='private/listens.sqlite')
     commands = parser.add_subparsers(dest='command', required=True)
     ingest=commands.add_parser('import-events'); ingest.add_argument('path')
+    export=commands.add_parser('export-year',help='Export a managed Obsidian-compatible Markdown summary')
+    export.add_argument('--listener',required=True)
+    export.add_argument('--output-directory',required=True)
+    export.add_argument('--year',type=int)
+    export.add_argument('--timezone',default='UTC')
+    export.add_argument('--demo',action='store_true')
     for name in ('stats','recap'):
         command=commands.add_parser(name)
         command.add_argument('--listener',required=True)
@@ -30,6 +36,9 @@ def main():
     Path(args.db).parent.mkdir(parents=True,exist_ok=True)
     db=connect(args.db)
     if args.command=='import-events': result=load_json(db,args.path)
+    elif args.command=='export-year':
+        from .notes import export_year
+        result={'exported':str(export_year(db,args.listener,args.output_directory,args.year,args.timezone,args.demo))}
     elif args.command in ('stats','recap'):
         result=statistics(db,args.listener,args.start,args.end,args.timezone)
         if args.command=='recap':

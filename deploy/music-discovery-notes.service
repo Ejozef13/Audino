@@ -1,0 +1,17 @@
+[Unit]
+Description=Export Music Discovery year-to-date note
+
+[Service]
+Type=oneshot
+User=music-discovery
+Group=music-discovery
+WorkingDirectory=/opt/music-discovery
+EnvironmentFile=/etc/music-discovery/settings
+ExecStart=/opt/music-discovery/.venv/bin/python -m music_discovery --db /var/lib/music-discovery/listens.sqlite export-year --listener ${MUSIC_DISCOVERY_LISTENER} --timezone ${MUSIC_DISCOVERY_TIMEZONE} --output-directory /var/lib/music-discovery/notes
+StateDirectory=music-discovery
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/music-discovery

@@ -1,0 +1,3 @@
+# Local configuration example; no credentials. Set your actual imported listener ID.
+MUSIC_DISCOVERY_LISTENER=local
+MUSIC_DISCOVERY_TIMEZONE=America/New_York

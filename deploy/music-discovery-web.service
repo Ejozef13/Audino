@@ -1,0 +1,23 @@
+[Unit]
+Description=Music Discovery local dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=music-discovery
+Group=music-discovery
+WorkingDirectory=/opt/music-discovery
+EnvironmentFile=/etc/music-discovery/settings
+ExecStart=/opt/music-discovery/.venv/bin/python -m music_discovery --db /var/lib/music-discovery/listens.sqlite serve
+Restart=on-failure
+RestartSec=10
+StateDirectory=music-discovery
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/music-discovery
+
+[Install]
+WantedBy=multi-user.target

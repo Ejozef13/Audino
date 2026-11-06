@@ -49,12 +49,14 @@ class ModelTests(unittest.TestCase):
             db=connect(':memory:'); import_events(db,events())
             cutoff='2026-01-15T00:00:00Z'
             before=prepare(db,cutoff)[3].copy()
-            import_events(db,[dict(events()[0],event_id='future',timestamp='2026-02-01T00:00:00Z',track_id='future-only')])
+            import_events(db,[dict(events()[0],event_id='future',timestamp='2026-02-01T00:00:00Z',track_id='future-only',title='Future metadata')])
             np.testing.assert_array_equal(before,prepare(db,cutoff)[3])
             path=Path(directory)/'model.npz'
             fit(db,cutoff,path,factors=4,iterations=2)
             meta,x,y,counts=load(path)
             self.assertNotIn(['synthetic-demo','future-only'],meta['items'])
+            self.assertNotIn('Future metadata',meta['titles'])
+            self.assertEqual(len(meta['titles']),len(meta['items']))
             seen={tuple(meta['items'][j]) for j in np.flatnonzero(counts[0])}
             recommendations=rank(meta,x,y,counts,meta['users'][0])
             self.assertTrue(all((r['source'],r['track_id']) not in seen for r in recommendations))

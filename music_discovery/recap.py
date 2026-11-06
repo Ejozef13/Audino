@@ -1,4 +1,5 @@
 from html import escape
+from .presentation import play_events
 
 
 def card(stats, demo=False):
@@ -6,7 +7,7 @@ def card(stats, demo=False):
     lines = [(64, 80, 22, label + 'MUSIC DISCOVERY'),
              (64, 160, 48, 'Your listening, in focus'),
              (64, 210, 17, stats['start'][:10] + ' → ' + stats['end_exclusive'][:10] + ' (end exclusive)'),
-             (64, 305, 70, f"{stats['plays']:,} play events"),
+             (64, 305, 70, play_events(stats['plays'])),
              (64, 350, 18, f"Duration reported for {stats['duration_events']}/{stats['plays']} events"),
              (64, 405, 26, 'TOP ARTISTS')]
     for i, (artist, count) in enumerate(stats['artists'][:5]):

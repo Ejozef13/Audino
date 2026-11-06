@@ -67,5 +67,23 @@ class YearAndNotesTests(unittest.TestCase):
         self.assertEqual(parse_qs(urlparse(url).query)['search_query'],['A&B Song / "Live" audio'])
         self.assertIsNone(youtube_search('Artist',None))
 
+    def test_unavailable_duration_is_not_displayed_as_measured_zero(self):
+        from music_discovery.notes import render, text
+        from music_discovery.presentation import reported_minutes
+        db=connect(':memory:')
+        row=dict(events()[0],artist='[Unknown Artist]',duration_ms=None)
+        import_events(db,[row])
+        stats=statistics(db,'demo','2026-01-01T00:00:00Z','2026-02-01T00:00:00Z')
+        note=render(stats)
+        self.assertIn('**1 play event**',note)
+        self.assertIn('Listening duration unavailable',note)
+        self.assertNotIn('0.00 minutes',note)
+        self.assertIn('| Unavailable | 0/1 |',note)
+        self.assertEqual(text('[Unknown Artist]'),r'\[Unknown Artist\]')
+        self.assertNotIn('&#91;',note)
+        # A genuinely reported zero is still a measurement and must remain zero.
+        self.assertEqual(reported_minutes({'duration_events':1,'reported_duration_ms':0},2),'0.00')
+        db.close()
+
 
 if __name__=='__main__': unittest.main()

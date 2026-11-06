@@ -4,6 +4,7 @@ import hashlib
 import tempfile
 from pathlib import Path
 from .analytics import statistics, year_window
+from .presentation import reported_minutes, play_events, duration_summary
 
 MARKER = '<!-- music-discovery:managed:v1 -->'
 
@@ -11,9 +12,10 @@ MARKER = '<!-- music-discovery:managed:v1 -->'
 def text(value):
     # Names are data, not executable Markdown, wikilinks, HTML, or front matter.
     value = ' '.join(str(value).split())
-    for char in ('&', '<', '>', '|', '[', ']', '*', '_', '`', '#', '\\'):
-        value = value.replace(char, f'&#{ord(char)};')
-    return value
+    # Obsidian Live Preview may display numeric HTML entities literally in tables.
+    # Markdown backslash escapes keep punctuation readable without creating links.
+    punctuation = '\\`*_{}[]()#+.!|<>~&$=^-'
+    return ''.join('\\'+char if char in punctuation else char for char in value)
 
 
 def render(stats, demo=False):
@@ -21,17 +23,16 @@ def render(stats, demo=False):
             '**SYNTHETIC FIXTURE DEMO — not personal listening history.**' if demo else 'Private listening summary.', '',
             f"Interval: {stats['start']} → {stats['end_exclusive']} (end exclusive).",
             f"Calendar timezone: {stats['timezone']}.", '',
-            f"**{stats['plays']} play events** in imported data.",
-            f"Reported listening time: {stats['reported_duration_ms']/60000:.2f} minutes from {stats['duration_events']} events; "
-            f"{stats['missing_duration_events']} events have no reported duration.",
+            f"**{play_events(stats['plays'])}** in imported data.",
+            duration_summary(stats,2),
             'Coverage is imported events only; this is not proof of complete server history.', '',
             '## Top 5 artists', '', '| Artist | Plays | Reported minutes | Events with duration / total |',
             '|---|---:|---:|---:|']
     for artist in stats['artist_details'][:5]:
-        rows.append(f"| {text(artist['artist'])} | {artist['plays']} | {artist['reported_duration_ms']/60000:.2f} | {artist['duration_events']}/{artist['plays']} |")
+        rows.append(f"| {text(artist['artist'])} | {artist['plays']} | {reported_minutes(artist,2)} | {artist['duration_events']}/{artist['plays']} |")
     rows.extend(['', '## Top 5 songs', '', '| Track | Artist | Plays | Reported minutes | Events with duration / total |', '|---|---|---:|---:|---:|'])
     for track in stats['tracks'][:5]:
-        rows.append(f"| {text(track['title'])} | {text(track['artist'])} | {track['plays']} | {track['reported_duration_ms']/60000:.2f} | {track['duration_events']}/{track['plays']} |")
+        rows.append(f"| {text(track['title'])} | {text(track['artist'])} | {track['plays']} | {reported_minutes(track,2)} | {track['duration_events']}/{track['plays']} |")
     rows.extend(['', '## Interpretation', '',
                  'Ranked by play-event count; ties use deterministic alphabetical ordering.',
                  'Reported time is partial when events lack duration. No runtime-based estimates, skips, or completions are inferred.',

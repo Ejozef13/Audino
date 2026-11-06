@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlparse
 from .store import connect
 from .analytics import statistics, year_window
 from .links import youtube_search
+from .presentation import play_events, duration_summary, row_duration
 from .recap import card
 
 
@@ -45,8 +46,8 @@ def serve(path, port, demo=False, artifact=None):
                 if route.path=='/recap.svg': return self.send(200,card(stats,demo),'image/svg+xml')
                 e=lambda s:escape(str(s),quote=True)
                 fields=''.join(f'<label>{k}<input name="{k}" value="{e(v)}" required></label>' for k,v in [('listener',listener),('start',start),('end',end),('timezone',tz)])
-                artists=''.join(f'<li>{e(a["artist"])} <strong>{a["plays"]} plays</strong> · {a["reported_duration_ms"]/60000:.1f} reported minutes ({a["duration_events"]}/{a["plays"]} events have duration)</li>' for a in stats['artist_details'][:5]) or '<li>No events in this interval.</li>'
-                tracks=''.join(f'<li>{e(t["title"])} — {e(t["artist"])} <strong>{t["plays"]} plays</strong> · {t["reported_duration_ms"]/60000:.1f} reported minutes ({t["duration_events"]}/{t["plays"]} events have duration)</li>' for t in stats['tracks'][:5])
+                artists=''.join(f'<li>{e(a["artist"])} <strong>{e(play_events(a["plays"]))}</strong> · {e(row_duration(a))} ({a["duration_events"]}/{a["plays"]} events have duration)</li>' for a in stats['artist_details'][:5]) or '<li>No events in this interval.</li>'
+                tracks=''.join(f'<li>{e(t["title"])} — {e(t["artist"])} <strong>{e(play_events(t["plays"]))}</strong> · {e(row_duration(t))} ({t["duration_events"]}/{t["plays"]} events have duration)</li>' for t in stats['tracks'][:5])
                 albums=''.join(f'<li>{e(a)} <strong>{n}</strong></li>' for a,n in stats['albums'])
                 hours=''.join(f'<li>{h}:00 · {n} events</li>' for h,n in stats['hours'].items() if n)
                 recs='<p>Model pending. No recommendations have been invented.</p>'
@@ -67,7 +68,7 @@ def serve(path, port, demo=False, artifact=None):
                 <style>body{{font:17px system-ui;background:#10192b;color:#f5f2e9;max-width:1000px;margin:50px auto;padding:24px}}h1{{font-size:52px}}h2{{color:#edb871}}label,small{{display:block;margin:12px 0}}input,button{{padding:10px;border-radius:6px;border:1px solid #72809b}}input{{display:block;width:90%}}button{{background:#edb871;color:#10192b;cursor:pointer}}section{{background:#1c2942;padding:24px;border-radius:16px;margin:24px 0}}li{{padding:10px}}strong{{color:#edb871}}a{{color:#edb871}}</style>
                 <p>{'SYNTHETIC DEMO · NOT YOUR LISTENING HISTORY' if demo else 'LOCAL IMPORTS · PRIVATE BY DEFAULT'}</p><h1>Music Discovery</h1><p>Your listening, in focus.</p>
                 <details><summary>Choose listener and interval</summary><form>{fields}<button>Update dashboard</button></form></details>
-                <section><h2>{stats['plays']} play events</h2><p>{e(start)} → {e(end)} (end exclusive)</p><p>Reported listening duration: {stats['reported_duration_ms']/60000:.1f} minutes across {stats['duration_events']} events; {stats['missing_duration_events']} events lack duration.</p><p>Coverage is imported events only. No skip or completion inference.</p></section>
+                <section><h2>{e(play_events(stats['plays']))}</h2><p>{e(start)} → {e(end)} (end exclusive)</p><p>{e(duration_summary(stats))}</p><p>Coverage is imported events only. No skip or completion inference.</p></section>
                 <section><h2>Top 5 artists</h2><ol>{artists}</ol><h2>Top 5 tracks</h2><ol>{tracks}</ol><h2>Top albums</h2><ol>{albums}</ol><details><summary>Listening hours ({e(tz)})</summary><ul>{hours}</ul></details></section>
                 <section><h2>Discovery and baseline comparison</h2><p>Real-data comparison pending. Fixture results validate plumbing only.</p><form>{fields}<label>Method<select name="method"><option value="als">Implicit ALS</option><option value="popularity">Popularity baseline</option><option value="artist">Artist affinity baseline</option></select></label><button>Compare method</button></form>{recs}</section><form action="/recap.svg">{fields}<button>Export recap SVG</button></form><p>Recaps contain personal listening metadata. Review before sharing.</p></html>'''
                 self.send(200,body)

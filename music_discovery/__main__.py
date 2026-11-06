@@ -1,5 +1,7 @@
 import argparse
 import json
+import getpass
+from datetime import datetime, timezone
 from pathlib import Path
 from .store import connect, load_json
 from .analytics import statistics
@@ -11,6 +13,14 @@ def main():
     parser.add_argument('--db', default='private/listens.sqlite')
     commands = parser.add_subparsers(dest='command', required=True)
     ingest=commands.add_parser('import-events'); ingest.add_argument('path')
+    check=commands.add_parser('navidrome-check',help='Authenticate and check read-only scrobble history')
+    check.add_argument('--url',required=True)
+    sync=commands.add_parser('navidrome-sync',help='Import available history with stable source IDs')
+    sync.add_argument('--url',required=True)
+    sync.add_argument('--server-id',required=True)
+    sync.add_argument('--listener',required=True)
+    sync.add_argument('--start',required=True)
+    sync.add_argument('--end')
     export=commands.add_parser('export-year',help='Export a managed Obsidian-compatible Markdown summary')
     export.add_argument('--listener',required=True)
     export.add_argument('--output-directory',required=True)
@@ -33,9 +43,22 @@ def main():
     ev.add_argument('--output',required=True)
     ev.add_argument('--k',type=int,default=10)
     args=parser.parse_args()
+    client=None
+    if args.command in ('navidrome-check','navidrome-sync'):
+        from .navidrome import Client
+        client=Client(args.url)
+        client.login(input('Navidrome username: '),getpass.getpass('Navidrome password (not saved): '))
+        if args.command=='navidrome-check':
+            rows=client.history('1970-01-01T00:00:00Z',datetime.now(timezone.utc).isoformat(),size=1)
+            print(json.dumps({'authenticated':True,'history_endpoint_accessible':True,
+                              'sample_events':len(rows),'note':'An empty result does not establish that history recording is enabled.'},indent=2))
+            return
     Path(args.db).parent.mkdir(parents=True,exist_ok=True)
     db=connect(args.db)
     if args.command=='import-events': result=load_json(db,args.path)
+    elif args.command=='navidrome-sync':
+        from .navidrome import sync
+        result=sync(client,db,args.server_id,args.listener,args.start,args.end or datetime.now(timezone.utc).isoformat())
     elif args.command=='export-year':
         from .notes import export_year
         result={'exported':str(export_year(db,args.listener,args.output_directory,args.year,args.timezone,args.demo))}

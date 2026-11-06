@@ -2,8 +2,18 @@
 
 An offline-first listening analytics and recommendation workbench for Enrique's
 Navidrome companion. **First runnable slice, not a finished release.** Current
-integration format is internal JSON only. Spotify, ListenBrainz, and Navidrome
-adapters await primary-documentation verification and access.
+offline integration format is internal JSON. A version-specific read-only
+Navidrome 0.64.2 history adapter is implemented and fixture-tested; its real-server
+connection check is pending. Spotify and ListenBrainz adapters remain pending.
+
+To check your server from its local network (password is prompted, not saved):
+
+```sh
+.venv/bin/python -m music_discovery navidrome-check --url http://YOUR_NAVIDROME_ADDRESS:4533
+```
+
+Follow [the connection and import guide](docs/debian.md) before importing personal
+history. This does not enable automatic background collection or exact duration.
 
 The dashboard now defaults to the current year through the time of each request,
 with top-five artists/tracks and reported-duration coverage. New trained artifacts

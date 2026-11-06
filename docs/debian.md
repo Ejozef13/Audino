@@ -4,6 +4,65 @@ Status: year-to-date calculations, managed Markdown exports, and YouTube search
 links are implemented and tested locally. The included systemd units are templates;
 they have not been installed or boot-tested on your Debian VM. No Navidrome collector
 is connected. Running these units does not magically obtain listening events.
+An interactive read-only adapter for verified Navidrome 0.64.2 is now implemented;
+see the connection check below. It has fixture tests but awaits a real-server run.
+
+## Navidrome 0.64.2 connection check and manual sync
+
+The user's installed binary reports **0.64.2 (10114574)**. The exact `v0.64.2`
+source verifies `/auth/login`, authenticated `/api/scrobble`, per-user event IDs,
+timestamps, `/api/song`, and `EnableScrobbleHistory` defaulting to true. This does
+not prove runtime settings or retained history. No container restart is required
+to check access. From the desktop project directory, use the actual LAN URL:
+
+```sh
+git pull --ff-only origin main
+.venv/bin/python -m music_discovery navidrome-check --url http://YOUR_NAVIDROME_ADDRESS:4533
+```
+
+Enter your **Navidrome** username/password locally, not the Debian login password
+unless you intentionally made them the same. The password prompt is hidden; no
+token/password is printed, put in shell history, or saved. HTTP uses the same
+unencrypted LAN transport as the existing web UI; use the server's HTTPS URL if
+configured. Redirects are refused so authentication cannot silently move to a
+different destination. Do not publish the server to make this check work.
+
+If the check authenticates and accesses history, import a bounded interval:
+
+```sh
+.venv/bin/python -m music_discovery --db private/navidrome.sqlite navidrome-sync --url http://YOUR_NAVIDROME_ADDRESS:4533 --server-id home --listener enrique --start 2026-01-01T00:00:00Z
+```
+
+Keep `--server-id home` and the listener alias stable for reimports. The start
+above is UTC; use `2026-01-01T00:00:00-05:00` for a New York calendar year. End
+defaults to the current UTC instant. Imports are atomic and idempotent by the
+server's event IDs. Legitimate repeated plays with different event IDs remain
+separate. The importer fetches at most 10,000 rows by default; at the limit, use
+smaller explicit `--start`/`--end` intervals. Nothing commits on an incomplete or
+invalid import. Deleted/missing song metadata also blocks the batch and is not
+silently fabricated. Song runtime never populates listening duration.
+
+Run the personal dashboard without the fictional model:
+
+```sh
+MUSIC_DISCOVERY_LISTENER=enrique MUSIC_DISCOVERY_TIMEZONE=America/New_York .venv/bin/python -m music_discovery --db private/navidrome.sqlite serve --port 8766
+```
+
+For Fish, prefix that command with `env ` instead of shell assignments. Stop your
+own demo server on 8766 first with Ctrl+C, or choose a free port. This adapter
+currently runs interactively: repeat sync to update data. Automatic background
+authentication/sync is not yet implemented. The existing timer updates notes from
+already imported data only. Do not load a fixture model as personal recommendations.
+
+An empty history response is not evidence of complete history, and the API cannot
+reconstruct events that were never retained. Imports access only the logged-in
+user's history. Native endpoints are version-specific, not an OpenSubsonic history
+contract. Exact-tag references:
+
+- https://github.com/navidrome/navidrome/blob/v0.64.2/conf/configuration.go
+- https://github.com/navidrome/navidrome/blob/v0.64.2/server/nativeapi/native_api.go
+- https://github.com/navidrome/navidrome/blob/v0.64.2/persistence/scrobble_repository.go
+- https://github.com/navidrome/navidrome/blob/v0.64.2/server/auth.go
 
 ## Placement
 

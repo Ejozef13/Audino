@@ -25,7 +25,10 @@ flowchart LR
 `evaluate.py`: full training-catalog metrics and eligibility rules.
 `recap.py`: escaped, deterministic SVG rendering. `web.py`: presentation/feedback.
 
-No source adapters, catalog ingestion, local-library matching, or audio access yet.
+A read-only native history adapter for Navidrome 0.64.2 is implemented; it uses
+interactive authentication, stable scrobble IDs, and song metadata, without
+importing track runtime as listening time. Real-server validation is pending.
+No external catalog ingestion, local-library matching, or audio access yet.
 No model is loaded unless explicitly provided. Save/dismiss is stored separately
 from implicit plays; it does not silently retrain the model. A dismissal filters
 the dashboard's top candidates; backfilling beyond the initial top ten is pending.

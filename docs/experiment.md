@@ -2,8 +2,10 @@
 
 ## Current evidence
 
-No personal history, licensed public subset, or real-data evaluation has been
-ingested. The only executed experiment uses `music_discovery.demo.events`:
+The desktop walkthrough verified a real Navidrome login and imported scrobble,
+but personal desktop data is not in this cloud checkout. No licensed public
+subset or real-data recommendation benchmark has been run here.
+Executed training experiments use `music_discovery.demo.events`:
 6 fictional listeners, 18 fictional tracks, 168 events, 2026-01-01–2026-01-28 UTC.
 The generator contains no copied listening data, artist names, or copyrighted audio.
 It is useful for plumbing tests only. **Do not cite these results as ML quality.**
@@ -69,8 +71,10 @@ dislikes. Models are persisted in NPZ with pickle disabled and JSON metadata.
 Before real training, freeze global training/validation/test boundaries in a
 manifest after inspecting only data availability, then record the subset checksum,
 timestamp coverage, seed, hardware/CPU model, OS, dependency versions, and commands.
-The current CLI checks cutoff/window consistency but does not enforce a locked
-experiment registry or prevent a human from repeatedly inspecting a test window.
+The validation runner now freezes a config, compares bounded grids across seeds,
+and leaves its final test interval unscored. The standalone evaluation CLI checks
+cutoff/window consistency but does not enforce a locked experiment registry or
+prevent a human from repeatedly inspecting a test window.
 Do not call the final test until hyperparameters and method choices are fixed.
 
 Fixture training cutoff: 2026-01-15T00:00:00Z. Validation: Jan 15 inclusive–Jan 22

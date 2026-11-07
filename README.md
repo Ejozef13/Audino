@@ -1,7 +1,11 @@
 # Music Discovery
 
-An offline-first listening analytics and recommendation workbench for Enrique's
-Navidrome companion. **First runnable slice, not a finished release.** Current
+An ML recommendation workbench and Navidrome listening companion. The model you
+train is implicit-feedback matrix factorization; a local **gpt-oss-20b through
+Ollama** agent can call its ranking and analytics tools. **Real-data evaluation
+and desktop agent inference are pending.** Start with the
+[ML training and agent guide](docs/ml-agent.md) for experiments, explicit track
+identity mapping, and Ollama commands. Current
 offline integration format is internal JSON. A version-specific read-only
 Navidrome 0.64.2 history adapter is implemented and fixture-tested; its real-server
 connection check is pending. Spotify and ListenBrainz adapters remain pending.

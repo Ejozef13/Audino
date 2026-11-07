@@ -1,0 +1,12 @@
+{
+  "dataset_version": "music_discovery.demo-v1",
+  "data_kind": "fixture",
+  "train_before": "2026-01-15T00:00:00Z",
+  "validation_end": "2026-01-22T00:00:00Z",
+  "test_end": "2026-01-29T00:00:00Z",
+  "factors": [8, 16],
+  "iterations": 10,
+  "seeds": [42, 43],
+  "k": 5,
+  "minimum_history": 5
+}

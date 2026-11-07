@@ -1,6 +1,7 @@
 """Small reference implicit ALS implementation; NumPy is loaded only for ML."""
 import json
 import time
+import hashlib
 import numpy as np
 from .store import instant
 
@@ -22,12 +23,14 @@ def prepare(db, cutoff):
     return users, items, artists, counts
 
 
-def fit(db, cutoff, output, factors=16, iterations=10, seed=42):
+def fit(db, cutoff, output, factors=16, iterations=10, seed=42, data_kind='unverified'):
     users, items, artists, counts = prepare(db, cutoff)
     if len(users) < 2 or len(items) < 2:
         raise ValueError('collaborative training requires multiple listeners and tracks')
-    if factors < 1 or iterations < 1:
-        raise ValueError('positive factors and iterations required')
+    if not 1 <= factors <= 64 or not 1 <= iterations <= 100:
+        raise ValueError('reference implementation allows 1–64 factors and 1–100 iterations')
+    if data_kind not in ('unverified','fixture','licensed_public','personal'):
+        raise ValueError('invalid training data kind')
     rng = np.random.default_rng(seed)
     x, y = rng.normal(0,.01,(len(users), factors)), rng.normal(0,.01,(len(items), factors))
     confidence = 1 + 10 * np.log1p(counts)
@@ -40,7 +43,11 @@ def fit(db, cutoff, output, factors=16, iterations=10, seed=42):
     for _ in range(iterations):
         x = update(y, confidence, preference)
         y = update(x, confidence.T, preference.T)
-    meta = dict(users=users, items=items, artists=artists, cutoff=instant(cutoff),
+    fingerprint=hashlib.sha256()
+    for row in db.execute('SELECT * FROM events WHERE timestamp<? ORDER BY source,event_id', (instant(cutoff),)):
+        fingerprint.update((json.dumps(tuple(row),ensure_ascii=False)+'\n').encode())
+    meta = dict(users=users, items=items, artists=artists, cutoff=instant(cutoff),data_kind=data_kind,
+                training_fingerprint=fingerprint.hexdigest(),
                 seed=seed, factors=factors, iterations=iterations, alpha=10, regularization=.1,
                 training_seconds=time.perf_counter()-started, numpy=np.__version__)
     titles = {}
@@ -53,7 +60,18 @@ def fit(db, cutoff, output, factors=16, iterations=10, seed=42):
 
 def load(path):
     with np.load(path, allow_pickle=False) as data:
-        return json.loads(str(data['metadata'])), data['x'].copy(), data['y'].copy(), data['counts'].copy()
+        meta=json.loads(str(data['metadata']))
+        x,y,counts=data['x'].copy(),data['y'].copy(),data['counts'].copy()
+    if (x.ndim!=2 or y.ndim!=2 or counts.ndim!=2 or x.shape[1]!=y.shape[1]
+            or x.shape[0]!=len(meta['users']) or y.shape[0]!=len(meta['items'])
+            or counts.shape!=(len(meta['users']),len(meta['items']))
+            or len(meta['artists'])!=len(meta['items']) or ('titles' in meta and len(meta['titles'])!=len(meta['items']))):
+        raise ValueError('Model artifact shapes and metadata disagree')
+    if not all(np.isfinite(array).all() for array in (x,y,counts)) or (counts<0).any():
+        raise ValueError('Model artifact contains invalid factors or counts')
+    if len(set(meta['users']))!=len(meta['users']) or len({tuple(item) for item in meta['items']})!=len(meta['items']):
+        raise ValueError('Model artifact contains duplicate identities')
+    return meta,x,y,counts
 
 
 def scores(meta, x, y, counts, user, method):
@@ -82,3 +100,33 @@ def rank(meta, x, y, counts, user, method='als', mode='discovery', k=10):
     return [dict(source=meta['items'][j][0], track_id=meta['items'][j][1], artist=meta['artists'][j],
                  title=meta.get('titles', [None]*len(meta['items']))[j],
                  score=float(values[j]), method=label, availability='unverified catalog suggestion') for j in order]
+
+
+def rank_profile(meta, y, counts, profile, method='als', mode='discovery', k=10):
+    """Fit a listener vector with frozen item factors; only explicitly matched IDs."""
+    profile=np.asarray(profile,dtype=float)
+    if profile.shape!=(len(meta['items']),) or not np.isfinite(profile).all() or (profile<0).any():
+        raise ValueError('invalid matched listening profile')
+    if method not in ('als','artist','popularity') or mode not in ('discovery','repeat') or not 1<=k<=50:
+        raise ValueError('invalid ranking arguments')
+    seen=profile>0
+    label='popularity baseline: training play counts'
+    values=counts.sum(axis=0)
+    if profile.sum()==0:
+        label='popularity fallback: no matched listening history'
+    elif method=='als':
+        confidence=1+meta.get('alpha',10)*np.log1p(profile)
+        gram=y.T@y + y.T@((confidence-1)[:,None]*y) + meta.get('regularization',.1)*np.eye(y.shape[1])
+        vector=np.linalg.solve(gram,y.T@(confidence*seen))
+        values=vector@y.T
+        label='implicit ALS: fitted listener vector against frozen trained item factors'
+    elif method=='artist':
+        weights={}
+        for artist,n in zip(meta['artists'],profile): weights[artist]=weights.get(artist,0)+n
+        values=np.array([weights[a] for a in meta['artists']])
+        label='artist affinity: matched profile play counts'
+    eligible=~seen if mode=='discovery' else seen
+    order=sorted(np.flatnonzero(eligible),key=lambda j:(-float(values[j]),meta['items'][j]))[:k]
+    return [dict(source=meta['items'][j][0],track_id=meta['items'][j][1],artist=meta['artists'][j],
+                 title=meta.get('titles',[None]*len(meta['items']))[j],score=float(values[j]),method=label,
+                 availability='catalog suggestion; local library availability unverified') for j in order]

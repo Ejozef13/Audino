@@ -1,5 +1,11 @@
 # Interview guide and portfolio claims
 
+The ML-focused revision adds local Ollama tool orchestration, validation grids,
+and personalization with frozen item factors. See `ml-agent.md` for exact status.
+The recommender is trained; gpt-oss-20b is a pretrained controller, not fine-tuned
+by this project. Real-data benchmark results and actual desktop agent inference
+remain pending. Do not describe mocked tool-loop tests as live-model validation.
+
 **Why implicit feedback?** A listen is observed behavior with ambiguous intent.
 Counts indicate confidence, not a star rating. We avoid deriving skips or completion
 from data that does not provide them.
@@ -28,6 +34,9 @@ exclusions, and K. They do not directly measure delight, diversity, fairness, or
 causality. Report those denominators alongside metrics.
 
 **What happens at cold start?** Unknown listeners get a labeled popularity fallback.
+When their listening history can be explicitly matched to the trained catalog,
+we can solve for a new listener vector while keeping the learned item vectors
+fixed. The agent reports its match counts, and zero matches remain a fallback.
 Unseen items have no collaborative vector and cannot enter the current artifact.
 Metadata similarity could address that limitation once an external catalog exists.
 
@@ -39,7 +48,8 @@ failure analysis remains pending; do not invent a story about improvements.
 
 > Built a Python/SQLite listening analytics prototype with idempotent event imports,
 > timezone-aware statistics, SVG recap exports, and a CPU implicit-ALS experiment
-> pipeline; validated core behavior with six automated tests and local browser checks.
+> pipeline; added a bounded local-agent interface and validation experiments, with
+> 28 automated tests. Real-data recommendation quality remains under evaluation.
 
 Real-user evaluation, Navidrome integration, measured recommendation gains, and
 public-data training are pending and must not appear as completed achievements.

@@ -38,11 +38,36 @@ def main():
     serve.add_argument('--demo',action='store_true'); serve.add_argument('--model')
     train=commands.add_parser('train'); train.add_argument('--cutoff',required=True)
     train.add_argument('--output',required=True)
+    train.add_argument('--factors',type=int,default=16)
+    train.add_argument('--iterations',type=int,default=10)
+    train.add_argument('--seed',type=int,default=42)
+    train.add_argument('--data-kind',choices=['unverified','fixture','licensed_public','personal'],default='unverified')
+    experiment=commands.add_parser('validate-experiment',help='Freeze config and compare models on validation only')
+    experiment.add_argument('--config',required=True)
+    experiment.add_argument('--output-directory',required=True)
+    ollama=commands.add_parser('ollama-check',help='Check local Ollama and installed model')
+    ollama.add_argument('--url',default='http://127.0.0.1:11434')
+    ollama.add_argument('--model',default='gpt-oss:20b')
+    agent=commands.add_parser('agent',help='Ask local Ollama to use bounded analytics/ranking tools')
+    agent.add_argument('--question',required=True)
+    agent.add_argument('--listener',required=True)
+    agent.add_argument('--start',required=True)
+    agent.add_argument('--end')
+    agent.add_argument('--timezone',default='UTC')
+    agent.add_argument('--artifact')
+    agent.add_argument('--mapping')
+    agent.add_argument('--demo',action='store_true')
+    agent.add_argument('--ollama-url',default='http://127.0.0.1:11434')
+    agent.add_argument('--ollama-model',default='gpt-oss:20b')
     ev=commands.add_parser('evaluate'); ev.add_argument('--model',required=True)
     ev.add_argument('--start',required=True); ev.add_argument('--end',required=True)
     ev.add_argument('--output',required=True)
     ev.add_argument('--k',type=int,default=10)
     args=parser.parse_args()
+    if args.command=='ollama-check':
+        from .agent import Ollama
+        print(json.dumps(Ollama(args.url,args.model).check(),indent=2))
+        return
     client=None
     if args.command in ('navidrome-check','navidrome-sync'):
         from .navidrome import Client
@@ -70,9 +95,24 @@ def main():
     elif args.command=='train':
         from .model import fit
         if Path(args.output).exists(): raise ValueError('refusing to overwrite model')
-        meta=fit(db,args.cutoff,args.output)
+        meta=fit(db,args.cutoff,args.output,args.factors,args.iterations,args.seed,args.data_kind)
         result={'artifact':args.output,'listeners':len(meta['users']),'tracks':len(meta['items']),
                 'cutoff':meta['cutoff'],'training_seconds':meta['training_seconds']}
+    elif args.command=='validate-experiment':
+        from .experiment import run_validation
+        with open(args.config,encoding='utf-8') as stream: config=json.load(stream)
+        result=run_validation(db,config,args.output_directory)
+    elif args.command=='agent':
+        from .agent import Ollama,Toolbox,run
+        mapping=None
+        if args.mapping:
+            with open(args.mapping,encoding='utf-8') as stream: mapping=json.load(stream)
+            if not isinstance(mapping,list): raise ValueError('Mapping must be a list of explicit identity pairs')
+        client=Ollama(args.ollama_url,args.ollama_model)
+        client.check()
+        toolbox=Toolbox(db,args.listener,args.start,args.end or datetime.now(timezone.utc).isoformat(),
+                        args.timezone,args.artifact,mapping,args.demo)
+        result=run(client,toolbox,args.question)
     elif args.command=='evaluate':
         from .evaluate import evaluate
         result=evaluate(db,args.model,args.start,args.end,args.k)
